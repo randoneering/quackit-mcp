@@ -1,5 +1,7 @@
 # quackit
 
+![quackit](assets/quackit.png)
+
 Lightweight session-scoped agent memory core with stdio MCP adapter.
 
 ## Features
