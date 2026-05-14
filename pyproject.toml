@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quackit"
+version = "0.1.0"
+description = "Lightweight session-scoped agent memory core"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+keywords = ["mcp", "agent-memory", "ai", "session"]
+authors = [
+  {name = "Justin Beaurivage", email = "justin@beaurivage.io"},
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Database",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+  "duckdb>=1.3.0",
+  "fastmcp>=2.12.0",
+  "psycopg[binary]>=3.3.0",
+  "psycopg_pool>=3.2.0",
+  "pydantic>=2.11.0",
+  "python-dotenv>=1.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/justinbeaurivage/quackit"
+Repository = "https://github.com/justinbeaurivage/quackit"
+Issues = "https://github.com/justinbeaurivage/quackit/issues"
+
+[project.scripts]
+quackit = "quackit.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+  "postgres: tests requiring a Postgres database",
+  "duckdb: tests using DuckDB storage",
+  "slow: tests that take longer than usual",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+]
