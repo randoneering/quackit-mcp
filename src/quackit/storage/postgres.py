@@ -39,7 +39,7 @@ class PostgresStorage:
                 open=False,
                 min_size=1,
                 max_size=4,
-                kwargs={"autocommit": True, "row_factory": dict_row},
+                kwargs={"row_factory": dict_row},
             )
             self._pool.open()
             with self._pool.connection() as conn:
@@ -122,7 +122,9 @@ class PostgresStorage:
                 )
             """)
 
-    def create_project(self, name: str, description: str | None = None) -> ProjectRecord:
+    def create_project(
+        self, name: str, description: str | None = None
+    ) -> ProjectRecord:
         now = datetime.now(UTC)
         project_id = str(uuid4())
         with self._pool.connection() as conn:
@@ -130,7 +132,9 @@ class PostgresStorage:
                 "INSERT INTO projects (id, name, description, created_at) VALUES (%s, %s, %s, %s)",
                 [project_id, name, description, now],
             )
-        return ProjectRecord(id=project_id, name=name, description=description, created_at=now)
+        return ProjectRecord(
+            id=project_id, name=name, description=description, created_at=now
+        )
 
     def get_project(self, project_id: str) -> ProjectRecord | None:
         with self._pool.connection() as conn:
@@ -142,10 +146,11 @@ class PostgresStorage:
             return None
         return ProjectRecord(**row)
 
-    def consolidate_projects(self, source_ids: list[str], target_id: str) -> ProjectRecord:
+    def consolidate_projects(
+        self, source_ids: list[str], target_id: str
+    ) -> ProjectRecord:
         with self._pool.connection() as conn:
-            try:
-                conn.execute("BEGIN")
+            with conn.transaction():
                 target_row = conn.execute(
                     "SELECT id, name, description, created_at FROM projects WHERE id = %s",
                     [target_id],
@@ -154,7 +159,8 @@ class PostgresStorage:
                     raise RuntimeError(f"Target project not found: {target_id}")
                 for sid in source_ids:
                     exists = conn.execute(
-                        "SELECT 1 FROM projects WHERE id = %s", [sid],
+                        "SELECT 1 FROM projects WHERE id = %s",
+                        [sid],
                     ).fetchone()
                     if exists is None:
                         raise RuntimeError(f"Source project not found: {sid}")
@@ -171,10 +177,6 @@ class PostgresStorage:
                     f"DELETE FROM projects WHERE id IN ({placeholders})",
                     source_ids,
                 )
-                conn.execute("COMMIT")
-            except Exception:
-                conn.execute("ROLLBACK")
-                raise
         return ProjectRecord(**target_row)
 
     def list_projects(self) -> list[ProjectRecord]:
@@ -190,7 +192,15 @@ class PostgresStorage:
         with self._pool.connection() as conn:
             conn.execute(
                 "INSERT INTO sessions (id, project_id, status, summary, started_at, ended_at, last_heartbeat) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                [session_id, project_id, SessionStatus.OPEN.value, None, now, None, now],
+                [
+                    session_id,
+                    project_id,
+                    SessionStatus.OPEN.value,
+                    None,
+                    now,
+                    None,
+                    now,
+                ],
             )
         return SessionRecord(
             id=session_id,
@@ -267,38 +277,43 @@ class PostgresStorage:
         if session.status is SessionStatus.CLOSED:
             raise RuntimeError(f"Session is closed: {session_id}; cannot save memory")
 
-        now = datetime.now(UTC)
-        record = MemoryRecord(
-            id=str(uuid4()),
-            mem_id=build_mem_id(),
-            session_id=session_id,
-            project_id=session.project_id,
-            type=memory.type,
-            content=memory.content,
-            tags=memory.tags,
-            title=memory.title,
-            content_type=memory.content_type,
-            metadata=memory.metadata,
-            created_at=now,
-        )
-        with self._pool.connection() as conn:
-            conn.execute(
-                "INSERT INTO memories (id, mem_id, session_id, project_id, type, content, tags, title, content_type, metadata, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                [
-                    record.id,
-                    record.mem_id,
-                    record.session_id,
-                    record.project_id,
-                    record.type.value,
-                    record.content,
-                    json.dumps(record.tags),
-                    record.title,
-                    record.content_type.value if record.content_type else None,
-                    json.dumps(record.metadata),
-                    record.created_at,
-                ],
+        for _ in range(3):
+            now = datetime.now(UTC)
+            record = MemoryRecord(
+                id=str(uuid4()),
+                mem_id=build_mem_id(),
+                session_id=session_id,
+                project_id=session.project_id,
+                type=memory.type,
+                content=memory.content,
+                tags=memory.tags,
+                title=memory.title,
+                content_type=memory.content_type,
+                metadata=memory.metadata,
+                created_at=now,
             )
-        return record
+            try:
+                with self._pool.connection() as conn:
+                    conn.execute(
+                        "INSERT INTO memories (id, mem_id, session_id, project_id, type, content, tags, title, content_type, metadata, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        [
+                            record.id,
+                            record.mem_id,
+                            record.session_id,
+                            record.project_id,
+                            record.type.value,
+                            record.content,
+                            json.dumps(record.tags),
+                            record.title,
+                            record.content_type.value if record.content_type else None,
+                            json.dumps(record.metadata),
+                            record.created_at,
+                        ],
+                    )
+                return record
+            except psycopg.errors.UniqueViolation:
+                log.warning("Memory ID collision, retrying insert")
+        raise RuntimeError("Failed to generate a unique memory ID")
 
     def get_memory(self, mem_id: str) -> MemoryRecord | None:
         with self._pool.connection() as conn:
@@ -323,6 +338,14 @@ class PostgresStorage:
             metadata=json.loads(metadata_raw) if metadata_raw else {},
             created_at=self._as_utc(row["created_at"]),
         )
+
+    def count_memories(self, session_id: str) -> int:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS count FROM memories WHERE session_id = %s",
+                [session_id],
+            ).fetchone()
+        return int(row["count"])
 
     def update_memory(self, mem_id: str, update: MemoryUpdate) -> MemoryRecord:
         existing = self.get_memory(mem_id)
@@ -357,7 +380,8 @@ class PostgresStorage:
                 params,
             )
         updated = self.get_memory(mem_id)
-        assert updated is not None
+        if updated is None:
+            raise RuntimeError(f"Failed to retrieve memory after update: {mem_id}")
         return updated
 
     def _row_to_search_result(self, row) -> SearchResult:
@@ -365,10 +389,14 @@ class PostgresStorage:
         return SearchResult(
             mem_id=row["mem_id"],
             type=row["type"],
-            snippet=row["content"] if len(row["content"]) <= 120 else f"{row['content'][:120]}...",
+            snippet=row["content"]
+            if len(row["content"]) <= 120
+            else f"{row['content'][:120]}...",
             tags=json.loads(row["tags"]),
             title=row["title"],
-            content_type=ContentType(row["content_type"]) if row["content_type"] else None,
+            content_type=ContentType(row["content_type"])
+            if row["content_type"]
+            else None,
             metadata=json.loads(metadata_raw) if metadata_raw else {},
             created_at=self._as_utc(row["created_at"]).isoformat(),
         )
@@ -379,6 +407,7 @@ class PostgresStorage:
         query: str,
         memory_type: str | None,
         content_type: str | None = None,
+        limit: int = 100,
     ) -> list[SearchResult]:
         sql = "SELECT mem_id, type, content, tags, title, content_type, metadata, created_at FROM memories WHERE session_id = %s AND (lower(content) LIKE %s OR lower(tags) LIKE %s)"
         params: list[object] = [session_id, f"%{query.lower()}%", f"%{query.lower()}%"]
@@ -388,7 +417,8 @@ class PostgresStorage:
         if content_type is not None:
             sql += " AND content_type = %s"
             params.append(content_type)
-        sql += " ORDER BY created_at DESC"
+        sql += " ORDER BY created_at DESC LIMIT %s"
+        params.append(limit)
         with self._pool.connection() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [self._row_to_search_result(row) for row in rows]
@@ -406,23 +436,37 @@ class PostgresStorage:
         )
 
     def save_skill(self, skill: SkillCreate) -> SkillRecord:
-        now = datetime.now(UTC)
-        skill_id = build_skill_id()
-        with self._pool.connection() as conn:
-            conn.execute(
-                "INSERT INTO skills (skill_id, name, description, content, tags, source, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                [skill_id, skill.name, skill.description, skill.content, json.dumps(skill.tags), skill.source, now, now],
-            )
-        return SkillRecord(
-            skill_id=skill_id,
-            name=skill.name,
-            description=skill.description,
-            content=skill.content,
-            tags=skill.tags,
-            source=skill.source,
-            created_at=now,
-            updated_at=now,
-        )
+        for _ in range(3):
+            now = datetime.now(UTC)
+            skill_id = build_skill_id()
+            try:
+                with self._pool.connection() as conn:
+                    conn.execute(
+                        "INSERT INTO skills (skill_id, name, description, content, tags, source, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                        [
+                            skill_id,
+                            skill.name,
+                            skill.description,
+                            skill.content,
+                            json.dumps(skill.tags),
+                            skill.source,
+                            now,
+                            now,
+                        ],
+                    )
+                return SkillRecord(
+                    skill_id=skill_id,
+                    name=skill.name,
+                    description=skill.description,
+                    content=skill.content,
+                    tags=skill.tags,
+                    source=skill.source,
+                    created_at=now,
+                    updated_at=now,
+                )
+            except psycopg.errors.UniqueViolation:
+                log.warning("Skill ID collision, retrying insert")
+        raise RuntimeError("Failed to generate a unique skill ID")
 
     def get_skill(self, skill_id: str) -> SkillRecord | None:
         with self._pool.connection() as conn:
@@ -470,7 +514,8 @@ class PostgresStorage:
                 params,
             )
         updated = self.get_skill(skill_id)
-        assert updated is not None
+        if updated is None:
+            raise RuntimeError(f"Failed to retrieve skill after update: {skill_id}")
         return updated
 
     def delete_skill(self, skill_id: str) -> None:
@@ -482,7 +527,9 @@ class PostgresStorage:
         params: list[object] = []
         conditions: list[str] = []
         if query:
-            conditions.append("(lower(name) LIKE %s OR lower(description) LIKE %s OR lower(content) LIKE %s)")
+            conditions.append(
+                "(lower(name) LIKE %s OR lower(description) LIKE %s OR lower(content) LIKE %s)"
+            )
             q = f"%{query.lower()}%"
             params.extend([q, q, q])
         if tag is not None:
@@ -501,6 +548,7 @@ class PostgresStorage:
         query: str,
         memory_type: str | None,
         content_type: str | None = None,
+        limit: int = 100,
     ) -> list[SearchResult]:
         sql = "SELECT mem_id, type, content, tags, title, content_type, metadata, created_at FROM memories WHERE project_id = %s AND (lower(content) LIKE %s OR lower(tags) LIKE %s)"
         params: list[object] = [project_id, f"%{query.lower()}%", f"%{query.lower()}%"]
@@ -510,7 +558,8 @@ class PostgresStorage:
         if content_type is not None:
             sql += " AND content_type = %s"
             params.append(content_type)
-        sql += " ORDER BY created_at DESC"
+        sql += " ORDER BY created_at DESC LIMIT %s"
+        params.append(limit)
         with self._pool.connection() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [self._row_to_search_result(row) for row in rows]

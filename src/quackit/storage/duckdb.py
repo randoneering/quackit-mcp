@@ -3,15 +3,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
 import duckdb
-
-log = logging.getLogger(__name__)
-
-_POSTGRES_ENV_VARS = ("QUACKIT_DATABASE_URL", "AGENT_MEMORY_DATABASE_URL")
 
 from quackit._migrations import run_migrations
 from quackit.models import (
@@ -30,16 +27,22 @@ from quackit.models import (
     build_skill_id,
 )
 
+log = logging.getLogger(__name__)
+
+_POSTGRES_ENV_VARS = ("QUACKIT_DATABASE_URL", "AGENT_MEMORY_DATABASE_URL")
+
 
 class DuckDBStorage:
     def __init__(self, database_path: Path) -> None:
         for var in _POSTGRES_ENV_VARS:
             if os.environ.get(var):
                 log.warning(
-                    "%s is set (%s...) but DuckDB storage was requested at %s — data will NOT be visible to Postgres consumers",
-                    var, os.environ[var][:40], database_path,
+                    "%s is set but DuckDB storage was requested at %s — data will NOT be visible to Postgres consumers",
+                    var,
+                    database_path,
                 )
                 break
+        self._lock = threading.RLock()
         resolved = database_path.resolve()
         if ".." in str(database_path):
             log.warning("Database path contains '..', resolved to %s", resolved)
@@ -120,14 +123,18 @@ class DuckDBStorage:
             """
         )
 
-    def create_project(self, name: str, description: str | None = None) -> ProjectRecord:
+    def create_project(
+        self, name: str, description: str | None = None
+    ) -> ProjectRecord:
         now = datetime.now(UTC)
         project_id = str(uuid4())
         self._connection.execute(
             "INSERT INTO projects (id, name, description, created_at) VALUES (?, ?, ?, ?)",
             [project_id, name, description, now],
         )
-        return ProjectRecord(id=project_id, name=name, description=description, created_at=now)
+        return ProjectRecord(
+            id=project_id, name=name, description=description, created_at=now
+        )
 
     def get_project(self, project_id: str) -> ProjectRecord | None:
         row = self._connection.execute(
@@ -136,9 +143,13 @@ class DuckDBStorage:
         ).fetchone()
         if row is None:
             return None
-        return ProjectRecord(id=row[0], name=row[1], description=row[2], created_at=row[3])
+        return ProjectRecord(
+            id=row[0], name=row[1], description=row[2], created_at=row[3]
+        )
 
-    def consolidate_projects(self, source_ids: list[str], target_id: str) -> ProjectRecord:
+    def consolidate_projects(
+        self, source_ids: list[str], target_id: str
+    ) -> ProjectRecord:
         self._connection.execute("BEGIN TRANSACTION")
         try:
             target = self.get_project(target_id)
@@ -317,22 +328,27 @@ class DuckDBStorage:
         if session.status is SessionStatus.CLOSED:
             raise RuntimeError(f"Session is closed: {session_id}; cannot save memory")
 
-        now = datetime.now(UTC)
-        record = MemoryRecord(
-            id=str(uuid4()),
-            mem_id=build_mem_id(),
-            session_id=session_id,
-            project_id=session.project_id,
-            type=memory.type,
-            content=memory.content,
-            tags=memory.tags,
-            title=memory.title,
-            content_type=memory.content_type,
-            metadata=memory.metadata,
-            created_at=now,
-        )
-        self._insert_memory(record)
-        return record
+        for _ in range(3):
+            now = datetime.now(UTC)
+            record = MemoryRecord(
+                id=str(uuid4()),
+                mem_id=build_mem_id(),
+                session_id=session_id,
+                project_id=session.project_id,
+                type=memory.type,
+                content=memory.content,
+                tags=memory.tags,
+                title=memory.title,
+                content_type=memory.content_type,
+                metadata=memory.metadata,
+                created_at=now,
+            )
+            try:
+                self._insert_memory(record)
+                return record
+            except duckdb.ConstraintException:
+                log.warning("Memory ID collision, retrying insert")
+        raise RuntimeError("Failed to generate a unique memory ID")
 
     def get_memory(self, mem_id: str) -> MemoryRecord | None:
         row = self._connection.execute(
@@ -342,6 +358,13 @@ class DuckDBStorage:
         if row is None:
             return None
         return self._row_to_memory(row)
+
+    def count_memories(self, session_id: str) -> int:
+        row = self._connection.execute(
+            "SELECT COUNT(*) FROM memories WHERE session_id = ?",
+            [session_id],
+        ).fetchone()
+        return int(row[0])
 
     def update_memory(self, mem_id: str, update: MemoryUpdate) -> MemoryRecord:
         existing = self.get_memory(mem_id)
@@ -375,7 +398,8 @@ class DuckDBStorage:
             params,
         )
         updated = self.get_memory(mem_id)
-        assert updated is not None
+        if updated is None:
+            raise RuntimeError(f"Failed to retrieve memory after update: {mem_id}")
         return updated
 
     def _row_to_search_result(self, row) -> SearchResult:
@@ -397,6 +421,7 @@ class DuckDBStorage:
         query: str,
         memory_type: str | None,
         content_type: str | None = None,
+        limit: int = 100,
     ) -> list[SearchResult]:
         sql = "SELECT mem_id, type, content, tags, title, content_type, metadata, created_at FROM memories WHERE session_id = ? AND (lower(content) LIKE ? OR lower(tags) LIKE ?)"
         params: list[object] = [session_id, f"%{query.lower()}%", f"%{query.lower()}%"]
@@ -406,7 +431,8 @@ class DuckDBStorage:
         if content_type is not None:
             sql += " AND content_type = ?"
             params.append(content_type)
-        sql += " ORDER BY created_at DESC"
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
         rows = self._connection.execute(sql, params).fetchall()
         return [self._row_to_search_result(row) for row in rows]
 
@@ -423,22 +449,36 @@ class DuckDBStorage:
         )
 
     def save_skill(self, skill: SkillCreate) -> SkillRecord:
-        now = datetime.now(UTC)
-        skill_id = build_skill_id()
-        self._connection.execute(
-            "INSERT INTO skills (skill_id, name, description, content, tags, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [skill_id, skill.name, skill.description, skill.content, json.dumps(skill.tags), skill.source, now, now],
-        )
-        return SkillRecord(
-            skill_id=skill_id,
-            name=skill.name,
-            description=skill.description,
-            content=skill.content,
-            tags=skill.tags,
-            source=skill.source,
-            created_at=now,
-            updated_at=now,
-        )
+        for _ in range(3):
+            now = datetime.now(UTC)
+            skill_id = build_skill_id()
+            try:
+                self._connection.execute(
+                    "INSERT INTO skills (skill_id, name, description, content, tags, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    [
+                        skill_id,
+                        skill.name,
+                        skill.description,
+                        skill.content,
+                        json.dumps(skill.tags),
+                        skill.source,
+                        now,
+                        now,
+                    ],
+                )
+                return SkillRecord(
+                    skill_id=skill_id,
+                    name=skill.name,
+                    description=skill.description,
+                    content=skill.content,
+                    tags=skill.tags,
+                    source=skill.source,
+                    created_at=now,
+                    updated_at=now,
+                )
+            except duckdb.ConstraintException:
+                log.warning("Skill ID collision, retrying insert")
+        raise RuntimeError("Failed to generate a unique skill ID")
 
     def get_skill(self, skill_id: str) -> SkillRecord | None:
         row = self._connection.execute(
@@ -484,7 +524,8 @@ class DuckDBStorage:
             params,
         )
         updated = self.get_skill(skill_id)
-        assert updated is not None
+        if updated is None:
+            raise RuntimeError(f"Failed to retrieve skill after update: {skill_id}")
         return updated
 
     def delete_skill(self, skill_id: str) -> None:
@@ -495,7 +536,9 @@ class DuckDBStorage:
         params: list[object] = []
         conditions: list[str] = []
         if query:
-            conditions.append("(lower(name) LIKE ? OR lower(description) LIKE ? OR lower(content) LIKE ?)")
+            conditions.append(
+                "(lower(name) LIKE ? OR lower(description) LIKE ? OR lower(content) LIKE ?)"
+            )
             q = f"%{query.lower()}%"
             params.extend([q, q, q])
         if tag is not None:
@@ -513,6 +556,7 @@ class DuckDBStorage:
         query: str,
         memory_type: str | None,
         content_type: str | None = None,
+        limit: int = 100,
     ) -> list[SearchResult]:
         sql = "SELECT mem_id, type, content, tags, title, content_type, metadata, created_at FROM memories WHERE project_id = ? AND (lower(content) LIKE ? OR lower(tags) LIKE ?)"
         params: list[object] = [project_id, f"%{query.lower()}%", f"%{query.lower()}%"]
@@ -522,7 +566,8 @@ class DuckDBStorage:
         if content_type is not None:
             sql += " AND content_type = ?"
             params.append(content_type)
-        sql += " ORDER BY created_at DESC"
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
         rows = self._connection.execute(sql, params).fetchall()
         return [self._row_to_search_result(row) for row in rows]
 
@@ -543,3 +588,42 @@ class DuckDBStorage:
             )
             for row in rows
         ]
+
+
+def _locked(method):
+    def wrapper(self: DuckDBStorage, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
+
+
+for _method_name in (
+    "close",
+    "_initialize_schema",
+    "create_project",
+    "get_project",
+    "consolidate_projects",
+    "list_projects",
+    "create_session",
+    "list_recent_sessions",
+    "get_session",
+    "update_session_heartbeat",
+    "list_stale_open_sessions",
+    "orphan_session",
+    "end_session",
+    "_insert_memory",
+    "save_memory",
+    "get_memory",
+    "count_memories",
+    "update_memory",
+    "search_memories",
+    "save_skill",
+    "get_skill",
+    "update_skill",
+    "delete_skill",
+    "list_skills",
+    "search_memories_by_project",
+    "list_sessions_by_project",
+):
+    setattr(DuckDBStorage, _method_name, _locked(getattr(DuckDBStorage, _method_name)))

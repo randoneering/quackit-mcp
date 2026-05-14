@@ -17,6 +17,13 @@ def test_start_session_sets_active_session(tmp_path: Path) -> None:
     assert service._session_state.require_session_id() == session.id
 
 
+def test_list_recent_sessions_rejects_invalid_limit(tmp_path: Path) -> None:
+    service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
+
+    with pytest.raises(ValueError, match="limit must be between"):
+        service.list_recent_sessions(limit=0)
+
+
 def test_save_memory_requires_active_session(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
 
@@ -31,9 +38,13 @@ def test_save_memory_requires_active_session(tmp_path: Path) -> None:
 def test_activate_save_search_and_end_session(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     first = service.start_session()
-    service.save_memory(type=MemoryType.NOTE, content="first session note", tags=["one"])
+    service.save_memory(
+        type=MemoryType.NOTE, content="first session note", tags=["one"]
+    )
     second = service.start_session()
-    service.save_memory(type=MemoryType.ERROR_FIX, content="second session fix", tags=["two"])
+    service.save_memory(
+        type=MemoryType.ERROR_FIX, content="second session fix", tags=["two"]
+    )
 
     service.activate_session(first.id)
     results = service.search_memory(query="session")
@@ -91,7 +102,9 @@ def test_update_memory_with_metadata(tmp_path: Path) -> None:
     service.start_session()
     created = service.save_memory(type=MemoryType.NOTE, content="original", tags=[])
 
-    updated = service.update_memory(mem_id=created.mem_id, metadata={"language": "rust"})
+    updated = service.update_memory(
+        mem_id=created.mem_id, metadata={"language": "rust"}
+    )
 
     assert updated.metadata == {"language": "rust"}
 
@@ -99,9 +112,17 @@ def test_update_memory_with_metadata(tmp_path: Path) -> None:
 def test_update_memory_updates_content(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     service.start_session()
-    created = service.save_memory(type=MemoryType.NOTE, content="original", tags=["a"], title="orig")
+    created = service.save_memory(
+        type=MemoryType.NOTE, content="original", tags=["a"], title="orig"
+    )
 
-    updated = service.update_memory(mem_id=created.mem_id, content="updated", tags=["b"], title="new title", content_type=ContentType.CODE)
+    updated = service.update_memory(
+        mem_id=created.mem_id,
+        content="updated",
+        tags=["b"],
+        title="new title",
+        content_type=ContentType.CODE,
+    )
 
     assert updated.content == "updated"
     assert updated.tags == ["b"]
@@ -109,10 +130,30 @@ def test_update_memory_updates_content(tmp_path: Path) -> None:
     assert updated.content_type is ContentType.CODE
 
 
+def test_update_memory_validates_content(tmp_path: Path) -> None:
+    service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
+    service.start_session()
+    created = service.save_memory(type=MemoryType.NOTE, content="original", tags=[])
+
+    with pytest.raises(ValueError, match="content must not be empty"):
+        service.update_memory(mem_id=created.mem_id, content="")
+
+
+def test_update_memory_validates_tags(tmp_path: Path) -> None:
+    service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
+    service.start_session()
+    created = service.save_memory(type=MemoryType.NOTE, content="original", tags=[])
+
+    with pytest.raises(ValueError, match="tags exceeds"):
+        service.update_memory(mem_id=created.mem_id, tags=[str(i) for i in range(51)])
+
+
 def test_update_memory_partial(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     service.start_session()
-    created = service.save_memory(type=MemoryType.NOTE, content="original", tags=["a"], title="orig")
+    created = service.save_memory(
+        type=MemoryType.NOTE, content="original", tags=["a"], title="orig"
+    )
 
     updated = service.update_memory(mem_id=created.mem_id, content="only content")
 
@@ -139,8 +180,20 @@ def test_update_memory_requires_active_session(tmp_path: Path) -> None:
 def test_search_memory_filters_by_content_type(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     service.start_session()
-    service.save_memory(type=MemoryType.NOTE, content="def foo(): pass", tags=["python"], title="func", content_type=ContentType.CODE)
-    service.save_memory(type=MemoryType.NOTE, content="# Docs", tags=["docs"], title="readme", content_type=ContentType.MARKDOWN)
+    service.save_memory(
+        type=MemoryType.NOTE,
+        content="def foo(): pass",
+        tags=["python"],
+        title="func",
+        content_type=ContentType.CODE,
+    )
+    service.save_memory(
+        type=MemoryType.NOTE,
+        content="# Docs",
+        tags=["docs"],
+        title="readme",
+        content_type=ContentType.MARKDOWN,
+    )
     service.save_memory(type=MemoryType.NOTE, content="plain note", tags=["misc"])
 
     code_results = service.search_memory(query="", content_type=ContentType.CODE)
@@ -156,6 +209,19 @@ def test_search_memory_filters_by_content_type(tmp_path: Path) -> None:
     assert len(all_results) == 3
 
 
+def test_search_memory_applies_default_limit(tmp_path: Path) -> None:
+    service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
+    service.start_session()
+    for i in range(105):
+        service.save_memory(
+            type=MemoryType.NOTE, content=f"limited memory {i}", tags=[]
+        )
+
+    results = service.search_memory(query="limited")
+
+    assert len(results) == 100
+
+
 def test_search_memory_with_project_scope(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     project = service.create_project(name="proj")
@@ -165,3 +231,48 @@ def test_search_memory_with_project_scope(tmp_path: Path) -> None:
     results = service.search_memory(query="project", project_scope=True)
     assert len(results) == 1
     assert results[0].tags == ["proj"]
+
+
+def test_save_skill_validates_payload(tmp_path: Path) -> None:
+    service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
+
+    with pytest.raises(ValueError, match="name must not be empty"):
+        service.save_skill(name="", content="content")
+
+
+def test_update_skill_validates_payload(tmp_path: Path) -> None:
+    service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
+    skill = service.save_skill(name="skill", content="content")
+
+    with pytest.raises(ValueError, match="content must not be empty"):
+        service.update_skill(skill_id=skill.skill_id, content="")
+
+
+def test_close_stops_heartbeat(tmp_path: Path) -> None:
+    storage = DuckDBStorage(tmp_path / "memory.duckdb")
+    service = MemoryService(storage=storage, heartbeat_interval=60)
+    service.start_session()
+
+    service.close()
+
+    assert service._heartbeat_manager is None
+
+
+def test_orphan_detection_uses_count_query(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    storage = DuckDBStorage(tmp_path / "memory.duckdb")
+    service = MemoryService(storage=storage)
+    session = storage.create_session()
+
+    monkeypatch.setattr(storage, "list_stale_open_sessions", lambda since: [session])
+    monkeypatch.setattr(storage, "count_memories", lambda session_id: 7)
+
+    def fail_search(*args, **kwargs):
+        raise AssertionError("search_memories should not be used for counts")
+
+    monkeypatch.setattr(storage, "search_memories", fail_search)
+
+    orphans = service.run_orphan_detection()
+
+    assert orphans[0].summary == "Orphaned session with 7 memories"

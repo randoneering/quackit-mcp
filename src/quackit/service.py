@@ -3,7 +3,28 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, UTC
 
-from quackit.models import ContentType, MemoryCreate, MemoryRecord, MemoryType, MemoryUpdate, ProjectRecord, SearchResult, SessionRecord, SessionStatus, SkillCreate, SkillRecord, SkillUpdate
+from quackit._validation import (
+    DEFAULT_LIMIT,
+    validate_content,
+    validate_limit,
+    validate_name,
+    validate_query,
+    validate_tags,
+)
+from quackit.models import (
+    ContentType,
+    MemoryCreate,
+    MemoryRecord,
+    MemoryType,
+    MemoryUpdate,
+    ProjectRecord,
+    SearchResult,
+    SessionRecord,
+    SessionStatus,
+    SkillCreate,
+    SkillRecord,
+    SkillUpdate,
+)
 from quackit.session import ActiveSessionState, HeartbeatManager
 from quackit.storage import StorageBackend
 
@@ -33,7 +54,9 @@ class MemoryService:
         self._heartbeat_interval = heartbeat_interval
         self._heartbeat_manager: HeartbeatManager | None = None
 
-    def create_project(self, name: str, description: str | None = None) -> ProjectRecord:
+    def create_project(
+        self, name: str, description: str | None = None
+    ) -> ProjectRecord:
         return self._storage.create_project(name=name, description=description)
 
     def get_project(self, project_id: str) -> ProjectRecord:
@@ -42,7 +65,9 @@ class MemoryService:
             raise ProjectNotFoundError(f"Project not found: {project_id}")
         return project
 
-    def consolidate_projects(self, source_ids: list[str], target_id: str) -> ProjectRecord:
+    def consolidate_projects(
+        self, source_ids: list[str], target_id: str
+    ) -> ProjectRecord:
         if not source_ids:
             raise RuntimeError("source_ids must not be empty")
         if target_id in source_ids:
@@ -63,6 +88,7 @@ class MemoryService:
         return session
 
     def list_recent_sessions(self, limit: int = 10) -> list[SessionRecord]:
+        validate_limit(limit)
         return self._storage.list_recent_sessions(limit=limit)
 
     def activate_session(self, session_id: str) -> SessionRecord:
@@ -84,11 +110,28 @@ class MemoryService:
         log.info("Ended session %s", session_id)
         return session
 
-    def save_memory(self, type: MemoryType, content: str, tags: list[str], title: str | None = None, content_type: ContentType | None = None, metadata: dict[str, str] | None = None) -> MemoryRecord:
+    def save_memory(
+        self,
+        type: MemoryType,
+        content: str,
+        tags: list[str],
+        title: str | None = None,
+        content_type: ContentType | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> MemoryRecord:
         session_id = self._session_state.require_session_id()
+        validate_content(content)
+        validate_tags(tags)
         return self._storage.save_memory(
             session_id=session_id,
-            memory=MemoryCreate(type=type, content=content, tags=tags, title=title, content_type=content_type, metadata=metadata or {}),
+            memory=MemoryCreate(
+                type=type,
+                content=content,
+                tags=tags,
+                title=title,
+                content_type=content_type,
+                metadata=metadata or {},
+            ),
         )
 
     def get_memory(self, mem_id: str) -> MemoryRecord:
@@ -107,6 +150,10 @@ class MemoryService:
         metadata: dict[str, str] | None = None,
     ) -> MemoryRecord:
         session_id = self._session_state.require_session_id()
+        if content is not None:
+            validate_content(content)
+        if tags is not None:
+            validate_tags(tags)
         existing = self._storage.get_memory(mem_id)
         if existing is None:
             raise MemoryNotFoundError(f"Memory not found: {mem_id}")
@@ -114,7 +161,13 @@ class MemoryService:
             raise RuntimeError(f"Memory {mem_id} does not belong to the active session")
         return self._storage.update_memory(
             mem_id=mem_id,
-            update=MemoryUpdate(content=content, tags=tags, title=title, content_type=content_type, metadata=metadata),
+            update=MemoryUpdate(
+                content=content,
+                tags=tags,
+                title=title,
+                content_type=content_type,
+                metadata=metadata,
+            ),
         )
 
     def search_memory(
@@ -123,8 +176,11 @@ class MemoryService:
         type: MemoryType | None = None,
         project_scope: bool = False,
         content_type: ContentType | None = None,
+        limit: int = DEFAULT_LIMIT,
     ) -> list[SearchResult]:
         session_id = self._session_state.require_session_id()
+        validate_query(query)
+        validate_limit(limit)
         memory_type = None if type is None else type.value
         ct = None if content_type is None else content_type.value
         if project_scope:
@@ -136,12 +192,14 @@ class MemoryService:
                 query=query,
                 memory_type=memory_type,
                 content_type=ct,
+                limit=limit,
             )
         return self._storage.search_memories(
             session_id=session_id,
             query=query,
             memory_type=memory_type,
             content_type=ct,
+            limit=limit,
         )
 
     def list_sessions_by_project(self, project_id: str) -> list[SessionRecord]:
@@ -155,8 +213,17 @@ class MemoryService:
         tags: list[str] | None = None,
         source: str | None = None,
     ) -> SkillRecord:
+        validate_name(name)
+        validate_content(content)
+        validate_tags(tags or [])
         return self._storage.save_skill(
-            SkillCreate(name=name, description=description, content=content, tags=tags or [], source=source),
+            SkillCreate(
+                name=name,
+                description=description,
+                content=content,
+                tags=tags or [],
+                source=source,
+            ),
         )
 
     def get_skill(self, skill_id: str) -> SkillRecord:
@@ -174,15 +241,28 @@ class MemoryService:
         tags: list[str] | None = None,
         source: str | None = None,
     ) -> SkillRecord:
+        if name is not None:
+            validate_name(name)
+        if content is not None:
+            validate_content(content)
+        if tags is not None:
+            validate_tags(tags)
         return self._storage.update_skill(
             skill_id=skill_id,
-            update=SkillUpdate(name=name, description=description, content=content, tags=tags, source=source),
+            update=SkillUpdate(
+                name=name,
+                description=description,
+                content=content,
+                tags=tags,
+                source=source,
+            ),
         )
 
     def delete_skill(self, skill_id: str) -> None:
         self._storage.delete_skill(skill_id)
 
     def list_skills(self, query: str = "", tag: str | None = None) -> list[SkillRecord]:
+        validate_query(query)
         return self._storage.list_skills(query=query, tag=tag)
 
     def run_orphan_detection(self, threshold_minutes: int = 5) -> list[SessionRecord]:
@@ -190,12 +270,7 @@ class MemoryService:
         stale = self._storage.list_stale_open_sessions(since)
         orphans: list[SessionRecord] = []
         for session in stale:
-            memories = self._storage.search_memories(
-                session_id=session.id,
-                query="",
-                memory_type=None,
-            )
-            count = len(memories)
+            count = self._storage.count_memories(session.id)
             summary = f"Orphaned session with {count} memories"
             orphans.append(self._storage.orphan_session(session.id, summary))
             log.warning("Orphaned session %s with %d memories", session.id, count)
@@ -215,10 +290,18 @@ class MemoryService:
             interval=self._heartbeat_interval,
         )
         self._heartbeat_manager.start()
-        log.debug("Heartbeat started for session %s (interval=%ds)", session_id, self._heartbeat_interval)
+        log.debug(
+            "Heartbeat started for session %s (interval=%ds)",
+            session_id,
+            self._heartbeat_interval,
+        )
 
     def _stop_heartbeat(self) -> None:
         if self._heartbeat_manager is not None:
             self._heartbeat_manager.stop()
             log.debug("Heartbeat stopped")
             self._heartbeat_manager = None
+
+    def close(self) -> None:
+        self._stop_heartbeat()
+        self._storage.close()

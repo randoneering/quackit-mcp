@@ -10,13 +10,17 @@ _MAX_QUERY = 500
 _MAX_NAME = 200
 _MAX_TAG = 200
 _MAX_TAGS = 50
+_DEFAULT_LIMIT = 100
+_MAX_LIMIT = 1000
 
 
 def validate_content(value: str) -> str:
     if not value:
         raise ValidationError("content must not be empty")
     if len(value) > _MAX_CONTENT:
-        raise ValidationError(f"content exceeds {_MAX_CONTENT} characters ({len(value)})")
+        raise ValidationError(
+            f"content exceeds {_MAX_CONTENT} characters ({len(value)})"
+        )
     return value
 
 
@@ -41,3 +45,15 @@ def validate_tags(value: list[str]) -> list[str]:
         if len(tag) > _MAX_TAG:
             raise ValidationError(f"tag exceeds {_MAX_TAG} characters ({len(tag)})")
     return value
+
+
+def validate_limit(
+    value: int, *, default: int = _DEFAULT_LIMIT, maximum: int = _MAX_LIMIT
+) -> int:
+    if value < 1 or value > maximum:
+        raise ValidationError(f"limit must be between 1 and {maximum} ({value})")
+    return value
+
+
+DEFAULT_LIMIT = _DEFAULT_LIMIT
+MAX_LIMIT = _MAX_LIMIT

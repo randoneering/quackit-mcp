@@ -2,7 +2,15 @@ from datetime import datetime
 
 from pydantic import ValidationError
 
-from quackit.models import ContentType, MemoryCreate, MemoryType, SearchResult, ProjectRecord, SearchResult, build_mem_id
+from quackit.models import (
+    ContentType,
+    MemoryCreate,
+    MemoryType,
+    ProjectRecord,
+    SearchResult,
+    build_mem_id,
+    build_skill_id,
+)
 
 
 def test_content_type_has_expected_values() -> None:
@@ -32,7 +40,9 @@ def test_memory_create_defaults_title_and_content_type_to_none() -> None:
 
 
 def test_memory_create_accepts_metadata() -> None:
-    memory = MemoryCreate(type=MemoryType.NOTE, content="hello", tags=[], metadata={"language": "python"})
+    memory = MemoryCreate(
+        type=MemoryType.NOTE, content="hello", tags=[], metadata={"language": "python"}
+    )
     assert memory.metadata == {"language": "python"}
 
 
@@ -53,15 +63,28 @@ def test_memory_create_rejects_invalid_type() -> None:
 def test_build_mem_id_has_expected_shape() -> None:
     mem_id = build_mem_id()
     assert mem_id.startswith("mem_")
-    assert len(mem_id) == 12
+    assert len(mem_id) == len("mem_") + 16
+
+
+def test_build_skill_id_has_expected_shape() -> None:
+    skill_id = build_skill_id()
+    assert skill_id.startswith("sk_")
+    assert len(skill_id) == len("sk_") + 16
 
 
 def test_project_record_accepts_optional_description() -> None:
-    project = ProjectRecord(id="proj_1", name="my project", description=None, created_at=datetime.now())
+    project = ProjectRecord(
+        id="proj_1", name="my project", description=None, created_at=datetime.now()
+    )
     assert project.name == "my project"
     assert project.description is None
 
-    with_desc = ProjectRecord(id="proj_2", name="with desc", description="some description", created_at=datetime.now())
+    with_desc = ProjectRecord(
+        id="proj_2",
+        name="with desc",
+        description="some description",
+        created_at=datetime.now(),
+    )
     assert with_desc.description == "some description"
 
 

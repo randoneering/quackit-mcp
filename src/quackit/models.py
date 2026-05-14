@@ -138,8 +138,8 @@ class SearchResult(BaseModel):
 
 
 def build_mem_id() -> str:
-    return f"mem_{token_hex(4)}"
+    return f"mem_{token_hex(8)}"
 
 
 def build_skill_id() -> str:
-    return f"sk_{token_hex(4)}"
+    return f"sk_{token_hex(8)}"

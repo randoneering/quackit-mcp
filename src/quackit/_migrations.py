@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, UTC
 from typing import Any
 
@@ -17,7 +16,9 @@ class _Migration:
 _MIGRATIONS: list[_Migration] = []
 
 
-def register(version: int, description: str, sql_postgres: str, sql_duckdb: str) -> None:
+def register(
+    version: int, description: str, sql_postgres: str, sql_duckdb: str
+) -> None:
     _MIGRATIONS.append(_Migration(version, description, sql_postgres, sql_duckdb))
 
 
