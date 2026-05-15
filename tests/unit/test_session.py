@@ -29,6 +29,7 @@ def test_heartbeat_manager_calls_fn_on_interval() -> None:
     manager = HeartbeatManager(heartbeat_fn=lambda: calls.append("beat"), interval=0.05)
     manager.start()
     import time
+
     time.sleep(0.12)
     manager.stop()
     assert len(calls) >= 2
@@ -41,5 +42,6 @@ def test_heartbeat_manager_stop_prevents_further_calls() -> None:
     manager.stop()
     count_after_stop = len(calls)
     import time
+
     time.sleep(0.1)
     assert len(calls) == count_after_stop

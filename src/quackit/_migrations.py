@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -16,9 +16,7 @@ class _Migration:
 _MIGRATIONS: list[_Migration] = []
 
 
-def register(
-    version: int, description: str, sql_postgres: str, sql_duckdb: str
-) -> None:
+def register(version: int, description: str, sql_postgres: str, sql_duckdb: str) -> None:
     _MIGRATIONS.append(_Migration(version, description, sql_postgres, sql_duckdb))
 
 
@@ -105,9 +103,7 @@ register(
 
 def run_migrations(conn: Any, backend_type: str) -> None:
     placeholder = "%s" if backend_type == "postgres" else "?"
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS _schema_version (version INTEGER PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL)"
-    )
+    conn.execute("CREATE TABLE IF NOT EXISTS _schema_version (version INTEGER PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL)")
     row = conn.execute("SELECT MAX(version) AS v FROM _schema_version").fetchone()
     if row:
         val = row["v"] if isinstance(row, dict) else row[0]

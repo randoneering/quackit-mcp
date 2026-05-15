@@ -123,18 +123,14 @@ class DuckDBStorage:
             """
         )
 
-    def create_project(
-        self, name: str, description: str | None = None
-    ) -> ProjectRecord:
+    def create_project(self, name: str, description: str | None = None) -> ProjectRecord:
         now = datetime.now(UTC)
         project_id = str(uuid4())
         self._connection.execute(
             "INSERT INTO projects (id, name, description, created_at) VALUES (?, ?, ?, ?)",
             [project_id, name, description, now],
         )
-        return ProjectRecord(
-            id=project_id, name=name, description=description, created_at=now
-        )
+        return ProjectRecord(id=project_id, name=name, description=description, created_at=now)
 
     def get_project(self, project_id: str) -> ProjectRecord | None:
         row = self._connection.execute(
@@ -143,13 +139,9 @@ class DuckDBStorage:
         ).fetchone()
         if row is None:
             return None
-        return ProjectRecord(
-            id=row[0], name=row[1], description=row[2], created_at=row[3]
-        )
+        return ProjectRecord(id=row[0], name=row[1], description=row[2], created_at=row[3])
 
-    def consolidate_projects(
-        self, source_ids: list[str], target_id: str
-    ) -> ProjectRecord:
+    def consolidate_projects(self, source_ids: list[str], target_id: str) -> ProjectRecord:
         self._connection.execute("BEGIN TRANSACTION")
         try:
             target = self.get_project(target_id)
@@ -178,13 +170,8 @@ class DuckDBStorage:
         return target
 
     def list_projects(self) -> list[ProjectRecord]:
-        rows = self._connection.execute(
-            "SELECT id, name, description, created_at FROM projects ORDER BY created_at DESC"
-        ).fetchall()
-        return [
-            ProjectRecord(id=row[0], name=row[1], description=row[2], created_at=row[3])
-            for row in rows
-        ]
+        rows = self._connection.execute("SELECT id, name, description, created_at FROM projects ORDER BY created_at DESC").fetchall()
+        return [ProjectRecord(id=row[0], name=row[1], description=row[2], created_at=row[3]) for row in rows]
 
     def create_session(self, project_id: str | None = None) -> SessionRecord:
         now = datetime.now(UTC)
@@ -536,9 +523,7 @@ class DuckDBStorage:
         params: list[object] = []
         conditions: list[str] = []
         if query:
-            conditions.append(
-                "(lower(name) LIKE ? OR lower(description) LIKE ? OR lower(content) LIKE ?)"
-            )
+            conditions.append("(lower(name) LIKE ? OR lower(description) LIKE ? OR lower(content) LIKE ?)")
             q = f"%{query.lower()}%"
             params.extend([q, q, q])
         if tag is not None:

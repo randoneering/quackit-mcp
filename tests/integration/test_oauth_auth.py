@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from starlette.testclient import TestClient
-
 import pytest
+from starlette.testclient import TestClient
 
 from quackit.auth import OAuthConfig
 from quackit.server_stdio import build_server
@@ -62,10 +61,7 @@ def test_oauth_http_request_without_bearer_gets_claude_challenge(
     www_authenticate = response.headers["WWW-Authenticate"]
     assert www_authenticate.startswith("Bearer ")
     assert 'error="invalid_token"' in www_authenticate
-    assert (
-        'resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"'
-        in www_authenticate
-    )
+    assert 'resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"' in www_authenticate
 
 
 def test_oauth_resource_url_must_be_mcp_endpoint() -> None:

@@ -4,7 +4,13 @@ import os
 
 import pytest
 
-from quackit.models import ContentType, MemoryCreate, MemoryType, MemoryUpdate, SessionStatus, SkillCreate, SkillUpdate
+from quackit.models import (
+    ContentType,
+    MemoryCreate,
+    MemoryType,
+    MemoryUpdate,
+    SessionStatus,
+)
 from quackit.storage.postgres import PostgresStorage
 
 PG_URL = os.environ.get("QUACKIT_DATABASE_URL") or os.environ.get("AGENT_MEMORY_DATABASE_URL") or "postgresql://test:test@localhost:5433/agent_memory"

@@ -4,9 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from quackit.cli import build_parser, validate_transport_binding
 from quackit.auth import load_oauth_config_from_env
-
+from quackit.cli import build_parser, validate_transport_binding
 
 OAUTH_ENV_VARS = [
     "QUACKIT_OAUTH_ISSUER_URL",

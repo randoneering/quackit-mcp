@@ -40,9 +40,7 @@ def test_memory_create_defaults_title_and_content_type_to_none() -> None:
 
 
 def test_memory_create_accepts_metadata() -> None:
-    memory = MemoryCreate(
-        type=MemoryType.NOTE, content="hello", tags=[], metadata={"language": "python"}
-    )
+    memory = MemoryCreate(type=MemoryType.NOTE, content="hello", tags=[], metadata={"language": "python"})
     assert memory.metadata == {"language": "python"}
 
 
@@ -73,9 +71,7 @@ def test_build_skill_id_has_expected_shape() -> None:
 
 
 def test_project_record_accepts_optional_description() -> None:
-    project = ProjectRecord(
-        id="proj_1", name="my project", description=None, created_at=datetime.now()
-    )
+    project = ProjectRecord(id="proj_1", name="my project", description=None, created_at=datetime.now())
     assert project.name == "my project"
     assert project.description is None
 

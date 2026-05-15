@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from quackit._validation import ValidationError, validate_content, validate_name, validate_query, validate_tags
+from quackit._validation import (
+    ValidationError,
+    validate_content,
+    validate_name,
+    validate_query,
+    validate_tags,
+)
 
 
 def test_validate_content_ok() -> None:

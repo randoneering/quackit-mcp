@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 
-from quackit.session import ActiveSessionState, HeartbeatManager, NoActiveSessionError
+from quackit.session import ActiveSessionState, HeartbeatManager
 
 
 def test_active_session_state_concurrent_activate() -> None:
@@ -102,7 +102,7 @@ def test_active_session_state_concurrent_clear_causes_no_error() -> None:
 
 def test_heartbeat_concurrent_start_stop() -> None:
     calls: list[str] = []
-    lock = threading.Lock()
+    threading.Lock()
     manager = HeartbeatManager(heartbeat_fn=lambda: calls.append("beat"), interval=0.005)
 
     def hammer() -> None:
@@ -119,7 +119,7 @@ def test_heartbeat_concurrent_start_stop() -> None:
 
 def test_heartbeat_concurrent_start_stop_with_active_beats() -> None:
     calls: list[str] = []
-    lock = threading.Lock()
+    threading.Lock()
     manager = HeartbeatManager(heartbeat_fn=lambda: calls.append("beat"), interval=0.01)
     manager.start()
 
@@ -149,6 +149,7 @@ def test_heartbeat_fn_exception_does_not_propagate() -> None:
     manager = HeartbeatManager(heartbeat_fn=failing_fn, interval=0.01)
     manager.start()
     import time
+
     time.sleep(0.03)
     manager.stop()
 

@@ -10,7 +10,6 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 from quackit._migrations import run_migrations
-
 from quackit.models import (
     ContentType,
     MemoryCreate,
@@ -122,9 +121,7 @@ class PostgresStorage:
                 )
             """)
 
-    def create_project(
-        self, name: str, description: str | None = None
-    ) -> ProjectRecord:
+    def create_project(self, name: str, description: str | None = None) -> ProjectRecord:
         now = datetime.now(UTC)
         project_id = str(uuid4())
         with self._pool.connection() as conn:
@@ -132,9 +129,7 @@ class PostgresStorage:
                 "INSERT INTO projects (id, name, description, created_at) VALUES (%s, %s, %s, %s)",
                 [project_id, name, description, now],
             )
-        return ProjectRecord(
-            id=project_id, name=name, description=description, created_at=now
-        )
+        return ProjectRecord(id=project_id, name=name, description=description, created_at=now)
 
     def get_project(self, project_id: str) -> ProjectRecord | None:
         with self._pool.connection() as conn:
@@ -146,9 +141,7 @@ class PostgresStorage:
             return None
         return ProjectRecord(**row)
 
-    def consolidate_projects(
-        self, source_ids: list[str], target_id: str
-    ) -> ProjectRecord:
+    def consolidate_projects(self, source_ids: list[str], target_id: str) -> ProjectRecord:
         with self._pool.connection() as conn:
             with conn.transaction():
                 target_row = conn.execute(
@@ -181,9 +174,7 @@ class PostgresStorage:
 
     def list_projects(self) -> list[ProjectRecord]:
         with self._pool.connection() as conn:
-            rows = conn.execute(
-                "SELECT id, name, description, created_at FROM projects ORDER BY created_at DESC"
-            ).fetchall()
+            rows = conn.execute("SELECT id, name, description, created_at FROM projects ORDER BY created_at DESC").fetchall()
         return [ProjectRecord(**row) for row in rows]
 
     def create_session(self, project_id: str | None = None) -> SessionRecord:
@@ -389,14 +380,10 @@ class PostgresStorage:
         return SearchResult(
             mem_id=row["mem_id"],
             type=row["type"],
-            snippet=row["content"]
-            if len(row["content"]) <= 120
-            else f"{row['content'][:120]}...",
+            snippet=row["content"] if len(row["content"]) <= 120 else f"{row['content'][:120]}...",
             tags=json.loads(row["tags"]),
             title=row["title"],
-            content_type=ContentType(row["content_type"])
-            if row["content_type"]
-            else None,
+            content_type=ContentType(row["content_type"]) if row["content_type"] else None,
             metadata=json.loads(metadata_raw) if metadata_raw else {},
             created_at=self._as_utc(row["created_at"]).isoformat(),
         )
@@ -527,9 +514,7 @@ class PostgresStorage:
         params: list[object] = []
         conditions: list[str] = []
         if query:
-            conditions.append(
-                "(lower(name) LIKE %s OR lower(description) LIKE %s OR lower(content) LIKE %s)"
-            )
+            conditions.append("(lower(name) LIKE %s OR lower(description) LIKE %s OR lower(content) LIKE %s)")
             q = f"%{query.lower()}%"
             params.extend([q, q, q])
         if tag is not None:

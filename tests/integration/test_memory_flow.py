@@ -1,16 +1,21 @@
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SMOKE_SCRIPT = ROOT / "scripts" / "smoke_test.py"
 
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 
 from quackit.models import ContentType, MemoryType, SessionStatus
-from quackit.service import MemoryNotFoundError, MemoryService, ProjectNotFoundError, SessionNotFoundError
+from quackit.service import (
+    MemoryNotFoundError,
+    MemoryService,
+    ProjectNotFoundError,
+    SessionNotFoundError,
+)
 from quackit.storage.duckdb import DuckDBStorage
 
 
@@ -115,7 +120,7 @@ def test_project_memory_flow(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     project = service.create_project(name="my-project", description="test project")
 
-    session = service.start_session(project_id=project.id)
+    service.start_session(project_id=project.id)
     created = service.save_memory(
         type=MemoryType.CONTEXT,
         content="project-level decision",
@@ -164,6 +169,7 @@ def test_orphan_detection_marks_stale_session(tmp_path: Path) -> None:
     storage.update_session_heartbeat(session.id)
     stale_since = datetime.now(UTC) + timedelta(seconds=1)
     import time
+
     time.sleep(0.01)
 
     stale = storage.list_stale_open_sessions(stale_since)
@@ -179,11 +185,12 @@ def test_orphan_detection_marks_stale_session(tmp_path: Path) -> None:
 def test_service_orphan_detection_reclaims_stale_sessions(tmp_path: Path) -> None:
     storage = DuckDBStorage(tmp_path / "memory.duckdb")
     service = MemoryService(storage=storage)
-    session = service.start_session()
+    service.start_session()
 
     service.save_memory(type=MemoryType.NOTE, content="lost work", tags=[])
     service._stop_heartbeat()
     import time
+
     time.sleep(0.01)
 
     orphans = service.run_orphan_detection(threshold_minutes=0)
@@ -196,7 +203,7 @@ def test_service_consolidate_projects(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     target = service.create_project(name="target")
     source = service.create_project(name="source")
-    session = service.start_session(project_id=source.id)
+    service.start_session(project_id=source.id)
     service.save_memory(type=MemoryType.NOTE, content="move me", tags=[])
 
     result = service.consolidate_projects(source_ids=[source.id], target_id=target.id)
@@ -246,6 +253,7 @@ def test_heartbeat_updates_session(tmp_path: Path) -> None:
     original_hb = storage.get_session(session.id).last_heartbeat
 
     import time
+
     time.sleep(0.01)
     storage.update_session_heartbeat(session.id)
     updated_hb = storage.get_session(session.id).last_heartbeat
