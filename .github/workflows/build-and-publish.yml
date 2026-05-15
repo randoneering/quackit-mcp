@@ -41,7 +41,7 @@ jobs:
       - name: Run pip-audit (runtime deps only)
         run: |
           uv export --no-dev --frozen --no-hashes -o /tmp/requirements.txt
-          uv run --with pip-audit pip-audit --strict -r /tmp/requirements.txt
+          uv run --with pip-audit pip-audit --strict --skip-editable -r /tmp/requirements.txt
 
       - name: Run Semgrep
         run: uvx semgrep --config=auto --sarif --output=semgrep-results.sarif src/
