@@ -1,0 +1,15 @@
+.git/
+.github/
+tests/
+scripts/
+assets/
+.env*
+.gitignore
+LICENSE
+**/__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.mypy_cache/
+.tox/
+.pytest_cache/
