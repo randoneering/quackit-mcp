@@ -6,6 +6,9 @@ on:
       - main
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -55,9 +58,10 @@ jobs:
       - name: Run integration tests (DuckDB only)
         run: uv run pytest tests/integration -v -k "not postgres"
 
-  # --- Build, Scan, and Push (gated by security-and-tests) ---
+  # --- Build, Scan, and Push (gated by security-and-tests, skipped on PRs) ---
   build-and-push:
     needs: security-and-tests
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -125,3 +129,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
