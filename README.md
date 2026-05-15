@@ -2,12 +2,12 @@
   <img src="assets/quackit.png" alt="quackit" width="200">
 </p>
 
-Local-first session memory mcp-server for coding agents, with DuckDB by default and optional Postgres storage! I know there are other options out there, but it felt as if they were more geared towards AI agents within apps or services. I wanted something that would work alongside me, store context, code-snipbits, and even skills that I could reference later. Whether you choose to use DuckDB for project level storage or utilize a remote Postgres server, quackit will be there when you need it.
+Local-first session memory MCP server for coding agents, with DuckDB by default and optional Postgres storage! I know there are other options out there, but it felt as if they were more geared towards AI agents within apps or services. I wanted something that would work alongside me, store context, code snippets, and even skills that I could reference later. Whether you choose to use DuckDB for project level storage or utilize a remote Postgres server, quackit will be there when you need it.
 
 ## Features
 
 - **Local-first** — runs over `stdio` by default. No network required.
-- **Storage** — DuckDB by default, or Postgres with `QUACKIT_DATABASE_URL`. ([quack](https://github.com/duckdb/duckdb-quack) protocol already on the road map!) 
+- **Storage** — DuckDB by default, or Postgres with `QUACKIT_DATABASE_URL`. ([quack](https://github.com/duckdb/duckdb-quack) protocol already on the roadmap!) 
 - **Sessions** — start, activate, end, heartbeat, recover orphans.
 - **Memories** — save, update, get, search by query, type, or content type.
 - **Projects** — create, list, group sessions, search project scope, consolidate.

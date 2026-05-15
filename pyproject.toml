@@ -5,11 +5,11 @@ build-backend = "hatchling.build"
 [project]
 name = "quackit"
 version = "0.1.0"
-description = "Lightweight session-scoped mcp for coding agents"
+description = "Local-first session memory for coding agents, backed by DuckDB or Postgres"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "GPL-3.0-only"}
-keywords = ["mcp", "agent-memory", "ai", "session"]
+keywords = ["mcp", "agent-memory", "ai", "session", "duckdb", "postgres", "developer-tools", "coding-agent"]
 authors = [
   {name = "Justin Frye", email = "justin@randoneering.tech"},
 ]
@@ -35,7 +35,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/randoneering"
+Homepage = "https://github.com/randoneering/quackit-mcp"
 Repository = "https://github.com/randoneering/quackit-mcp"
 Issues = "https://github.com/randoneering/quackit-mcp/issues"
 
