@@ -1,15 +1,13 @@
-# quackit
-
 <p align="center">
   <img src="assets/quackit.png" alt="quackit" width="200">
 </p>
 
-Local-first session memory for MCP clients, with DuckDB by default and optional Postgres storage.
+Local-first session memory mcp-server for coding agents, with DuckDB by default and optional Postgres storage! I know there are other options out there, but it felt as if they were more geared towards AI agents within apps or services. I wanted something that would work alongside me, store context, code-snipbits, and even skills that I could reference later. Whether you choose to use DuckDB for project level storage or utilize a remote Postgres server, quackit will be there when you need it.
 
 ## Features
 
 - **Local-first** — runs over `stdio` by default. No network required.
-- **Storage** — DuckDB by default, or Postgres with `QUACKIT_DATABASE_URL`.
+- **Storage** — DuckDB by default, or Postgres with `QUACKIT_DATABASE_URL`. ([quack](https://github.com/duckdb/duckdb-quack) protocol already on the road map!) 
 - **Sessions** — start, activate, end, heartbeat, recover orphans.
 - **Memories** — save, update, get, search by query, type, or content type.
 - **Projects** — create, list, group sessions, search project scope, consolidate.
@@ -21,7 +19,7 @@ Local-first session memory for MCP clients, with DuckDB by default and optional 
 
 | Use case | Recommended path |
 |---|---|
-| Local Claude Desktop / Claude Code | `stdio` |
+| Local coding agents | `stdio` |
 | Local HTTP testing | `streamable-http` on `127.0.0.1` |
 | Private self-hosting | `streamable-http` behind your own auth/network controls |
 
@@ -30,7 +28,7 @@ Local-first session memory for MCP clients, with DuckDB by default and optional 
 Prerequisites: Python 3.10+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/justinbeaurivage/quackit.git
+git clone https://github.com/randoneering/quackit-mcp.git
 cd quackit
 uv sync
 ```
@@ -50,7 +48,7 @@ Data directory: `.local/quackit.duckdb` by default.
 
 ## Start the MCP server
 
-Use `stdio` for local Claude integration. No network port exposed.
+Use `stdio` for local integration with coding agents. No network port exposed.
 
 ```bash
 uv run quackit serve --transport stdio
@@ -250,7 +248,7 @@ docker pull ghcr.io/randoneering/quackit-mcp:latest
 ```
 
 Tags correspond to git tags (e.g., `v0.1.0` → `ghcr.io/randoneering/quackit-mcp:0.1.0`).
-Pin to semver in production; `latest` tracks `main`.
+Pin to server in production; `latest` tracks `main`.
 
 ### Stdio (default)
 
@@ -275,12 +273,3 @@ docker run --rm \
   serve --transport streamable-http --host 0.0.0.0 --port 8000 --allow-network
 ```
 
-## Troubleshooting
-
-```bash
-# Test stdio before adding to an MCP client
-uv run quackit serve --transport stdio
-
-# Verify storage configuration
-env | grep -E 'QUACKIT|AGENT_MEMORY'
-```

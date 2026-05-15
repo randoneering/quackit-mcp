@@ -5,18 +5,18 @@ build-backend = "hatchling.build"
 [project]
 name = "quackit"
 version = "0.1.0"
-description = "Lightweight session-scoped agent memory core"
+description = "Lightweight session-scoped mcp for coding agents"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = {text = "GPL-3.0-only"}
 keywords = ["mcp", "agent-memory", "ai", "session"]
 authors = [
-  {name = "Justin Beaurivage", email = "justin@beaurivage.io"},
+  {name = "Justin Frye", email = "justin@randoneering.tech"},
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -35,9 +35,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/justinbeaurivage/quackit"
-Repository = "https://github.com/justinbeaurivage/quackit"
-Issues = "https://github.com/justinbeaurivage/quackit/issues"
+Homepage = "https://github.com/randoneering"
+Repository = "https://github.com/randoneering/quackit-mcp"
+Issues = "https://github.com/randoneering/quackit-mcp/issues"
 
 [project.scripts]
 quackit = "quackit.cli:main"
@@ -64,5 +64,5 @@ omit = ["tests/*"]
 [tool.coverage.report]
 exclude_lines = [
   "pragma: no cover",
-  "if __name__ == .__main__.:",
+  "if __name__ == '__main__':",
 ]
