@@ -27,9 +27,7 @@ class ActiveSessionState:
     def require_session_id(self) -> str:
         with self._lock:
             if self._active_session_id is None:
-                raise NoActiveSessionError(
-                    "No active session. Call start_session() or activate_session() first."
-                )
+                raise NoActiveSessionError("No active session. Call start_session() or activate_session() first.")
             return self._active_session_id
 
 

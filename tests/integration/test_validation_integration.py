@@ -133,7 +133,14 @@ def test_save_memory_with_metadata(tmp_path: Path) -> None:
     _find_tool(server, "start_session").fn(project_id=None)
     tool = _find_tool(server, "save_memory")
 
-    result = tool.fn(type="note", content="skill content", tags=["skill"], title="My Skill", content_type="skill", metadata={"language": "python", "framework": "pytest"})
+    result = tool.fn(
+        type="note",
+        content="skill content",
+        tags=["skill"],
+        title="My Skill",
+        content_type="skill",
+        metadata={"language": "python", "framework": "pytest"},
+    )
 
     assert result["metadata"] == {"language": "python", "framework": "pytest"}
 

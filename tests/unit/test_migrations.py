@@ -9,9 +9,7 @@ from quackit.storage.duckdb import DuckDBStorage
 def test_migration_v2_creates_indexes(duckdb_path: Path) -> None:
     storage = DuckDBStorage(duckdb_path)
 
-    indexes = storage._connection.execute(
-        "SELECT index_name FROM duckdb_indexes WHERE table_name = 'memories'"
-    ).fetchall()
+    indexes = storage._connection.execute("SELECT index_name FROM duckdb_indexes WHERE table_name = 'memories'").fetchall()
     index_names = {row[0] for row in indexes}
     assert "idx_memories_session_id" in index_names
     assert "idx_memories_project_id" in index_names
@@ -31,9 +29,7 @@ def test_migration_idempotent(duckdb_path: Path) -> None:
 
 def test_schema_version_tracked(duckdb_path: Path) -> None:
     storage = DuckDBStorage(duckdb_path)
-    row = storage._connection.execute(
-        "SELECT MAX(version) FROM _schema_version"
-    ).fetchone()
+    row = storage._connection.execute("SELECT MAX(version) FROM _schema_version").fetchone()
     assert row is not None
     assert row[0] >= 2
     storage.close()

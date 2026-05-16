@@ -6,18 +6,63 @@ on:
       - main
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
   packages: write
   security-events: write
+  id-token: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-publish:
+  # --- Security & Test Gate (runs before any image is pushed) ---
+  security-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4 # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5 # v5.5.0
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3 # v3.2.4
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run pip-audit (runtime deps only)
+        run: |
+          uv export --no-dev --frozen --no-hashes -o /tmp/requirements.txt
+          uv run --with pip-audit pip-audit --strict --skip-editable -r /tmp/requirements.txt
+
+      - name: Run Semgrep
+        run: uvx semgrep --config=auto --sarif --output=semgrep-results.sarif src/
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v3 # v3.28.8
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+
+      - name: Run unit tests
+        run: uv run pytest tests/unit -v
+
+      - name: Run integration tests (DuckDB only)
+        run: uv run pytest tests/integration -v -k "not postgres"
+
+  # --- Build, Scan, and Push (gated by security-and-tests, skipped on PRs) ---
+  build-and-push:
+    needs: security-and-tests
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -46,17 +91,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3 # v3.10.0
 
-      - name: Build and push
+      # Build for amd64 only, load into local Docker daemon for Trivy scan
+      - name: Build image (amd64, local load)
         uses: docker/build-push-action@v6 # v6.15.0
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
+      # Scan the locally-loaded image BEFORE any push
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.28.0
         with:
@@ -71,3 +118,41 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
+
+      # Only push multi-arch image after Trivy passes
+      - name: Build and push (multi-arch)
+        uses: docker/build-push-action@v6 # v6.15.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+  # --- Publish to PyPI (tags only, gated by security-and-tests) ---
+  publish-pypi:
+    needs: security-and-tests
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/quackit
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4 # v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3 # v3.2.4
+
+      - name: Build
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

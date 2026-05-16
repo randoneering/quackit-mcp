@@ -8,7 +8,6 @@ from quackit.models import (
     MemoryCreate,
     MemoryType,
     MemoryUpdate,
-    ProjectRecord,
     SessionStatus,
     SkillCreate,
 )
@@ -54,14 +53,10 @@ def test_storage_search_memories_by_project(tmp_path: Path) -> None:
     session = storage.create_session(project_id=project.id)
     storage.save_memory(
         session_id=session.id,
-        memory=MemoryCreate(
-            type=MemoryType.NOTE, content="project memory", tags=["proj"]
-        ),
+        memory=MemoryCreate(type=MemoryType.NOTE, content="project memory", tags=["proj"]),
     )
 
-    results = storage.search_memories_by_project(
-        project.id, query="project", memory_type=None
-    )
+    results = storage.search_memories_by_project(project.id, query="project", memory_type=None)
     assert len(results) == 1
     assert results[0].tags == ["proj"]
 
@@ -120,9 +115,7 @@ def test_save_memory_fails_for_closed_session(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match=r"Session is closed: .*cannot save memory"):
         storage.save_memory(
             session_id=session.id,
-            memory=MemoryCreate(
-                type=MemoryType.NOTE, content="closed session write", tags=[]
-            ),
+            memory=MemoryCreate(type=MemoryType.NOTE, content="closed session write", tags=[]),
         )
 
 
@@ -181,15 +174,11 @@ def test_search_memory_with_percent_in_query(tmp_path: Path) -> None:
     session = storage.create_session()
     storage.save_memory(
         session_id=session.id,
-        memory=MemoryCreate(
-            type=MemoryType.NOTE, content="50% completion rate", tags=[]
-        ),
+        memory=MemoryCreate(type=MemoryType.NOTE, content="50% completion rate", tags=[]),
     )
     storage.save_memory(
         session_id=session.id,
-        memory=MemoryCreate(
-            type=MemoryType.NOTE, content="fifty percent done", tags=[]
-        ),
+        memory=MemoryCreate(type=MemoryType.NOTE, content="fifty percent done", tags=[]),
     )
 
     results_percent = storage.search_memories(session.id, query="%", memory_type=None)
@@ -220,23 +209,15 @@ def test_search_memory_with_special_regex_chars(tmp_path: Path) -> None:
     session = storage.create_session()
     storage.save_memory(
         session_id=session.id,
-        memory=MemoryCreate(
-            type=MemoryType.NOTE, content="price is $10.99 (incl. tax)", tags=["dollar"]
-        ),
+        memory=MemoryCreate(type=MemoryType.NOTE, content="price is $10.99 (incl. tax)", tags=["dollar"]),
     )
     storage.save_memory(
         session_id=session.id,
-        memory=MemoryCreate(
-            type=MemoryType.NOTE, content="price is [discounted]", tags=[]
-        ),
+        memory=MemoryCreate(type=MemoryType.NOTE, content="price is [discounted]", tags=[]),
     )
 
-    results_dollar = storage.search_memories(
-        session.id, query="$10.99", memory_type=None
-    )
-    results_bracket = storage.search_memories(
-        session.id, query="[discounted]", memory_type=None
-    )
+    results_dollar = storage.search_memories(session.id, query="$10.99", memory_type=None)
+    results_bracket = storage.search_memories(session.id, query="[discounted]", memory_type=None)
 
     assert len(results_dollar) == 1
     assert len(results_bracket) == 1
@@ -261,9 +242,7 @@ def test_storage_consolidate_projects_moves_sessions_and_memories(
     moved_session = storage.get_session(session.id)
     assert moved_session is not None
     assert moved_session.project_id == target.id
-    results = storage.search_memories_by_project(
-        target.id, query="move", memory_type=None
-    )
+    results = storage.search_memories_by_project(target.id, query="move", memory_type=None)
     assert len(results) == 1
 
 
@@ -287,9 +266,7 @@ def test_storage_consolidate_projects_handles_empty_source(tmp_path: Path) -> No
     target = storage.create_project(name="target")
     empty_source = storage.create_project(name="empty")
 
-    result = storage.consolidate_projects(
-        source_ids=[empty_source.id], target_id=target.id
-    )
+    result = storage.consolidate_projects(source_ids=[empty_source.id], target_id=target.id)
 
     assert result.id == target.id
     assert storage.get_project(empty_source.id) is None
@@ -315,10 +292,7 @@ def test_storage_consolidate_projects_multiple_sources(tmp_path: Path) -> None:
 
     assert storage.get_project(src_a.id) is None
     assert storage.get_project(src_b.id) is None
-    assert (
-        len(storage.search_memories_by_project(target.id, query="", memory_type=None))
-        == 2
-    )
+    assert len(storage.search_memories_by_project(target.id, query="", memory_type=None)) == 2
 
 
 def test_storage_save_memory_with_title_and_content_type(tmp_path: Path) -> None:
@@ -347,13 +321,7 @@ def test_storage_save_memory_with_title_and_content_type(tmp_path: Path) -> None
     assert results[0].title == "Foo function"
     assert results[0].content_type is ContentType.CODE
 
-    results_by_project = (
-        storage.search_memories_by_project(
-            session.project_id, query="foo", memory_type=None
-        )
-        if session.project_id
-        else []
-    )
+    results_by_project = storage.search_memories_by_project(session.project_id, query="foo", memory_type=None) if session.project_id else []
     if session.project_id:
         assert results_by_project[0].content_type is ContentType.CODE
 
@@ -400,14 +368,10 @@ def test_storage_update_memory_metadata(tmp_path: Path) -> None:
     session = storage.create_session()
     created = storage.save_memory(
         session_id=session.id,
-        memory=MemoryCreate(
-            type=MemoryType.NOTE, content="original", tags=[], metadata={"old": "data"}
-        ),
+        memory=MemoryCreate(type=MemoryType.NOTE, content="original", tags=[], metadata={"old": "data"}),
     )
 
-    updated = storage.update_memory(
-        created.mem_id, MemoryUpdate(metadata={"language": "go"})
-    )
+    updated = storage.update_memory(created.mem_id, MemoryUpdate(metadata={"language": "go"}))
 
     assert updated.metadata == {"language": "go"}
 
@@ -425,9 +389,7 @@ def test_storage_update_memory_metadata_partial(tmp_path: Path) -> None:
         ),
     )
 
-    updated = storage.update_memory(
-        created.mem_id, MemoryUpdate(content="new content only")
-    )
+    updated = storage.update_memory(created.mem_id, MemoryUpdate(content="new content only"))
 
     assert updated.metadata == {"old": "data"}
     assert updated.content == "new content only"
@@ -474,14 +436,10 @@ def test_update_memory_partial_update(tmp_path: Path) -> None:
     session = storage.create_session()
     created = storage.save_memory(
         session_id=session.id,
-        memory=MemoryCreate(
-            type=MemoryType.NOTE, content="original", tags=["a"], title="orig"
-        ),
+        memory=MemoryCreate(type=MemoryType.NOTE, content="original", tags=["a"], title="orig"),
     )
 
-    updated = storage.update_memory(
-        created.mem_id, MemoryUpdate(content="only content changed")
-    )
+    updated = storage.update_memory(created.mem_id, MemoryUpdate(content="only content changed"))
 
     assert updated.content == "only content changed"
     assert updated.tags == ["a"]
@@ -534,15 +492,9 @@ def test_search_memories_filters_by_content_type(tmp_path: Path) -> None:
         memory=MemoryCreate(type=MemoryType.NOTE, content="plain note", tags=["misc"]),
     )
 
-    code_results = storage.search_memories(
-        session.id, query="", memory_type=None, content_type="code"
-    )
-    markdown_results = storage.search_memories(
-        session.id, query="", memory_type=None, content_type="markdown"
-    )
-    skill_results = storage.search_memories(
-        session.id, query="", memory_type=None, content_type="skill"
-    )
+    code_results = storage.search_memories(session.id, query="", memory_type=None, content_type="code")
+    markdown_results = storage.search_memories(session.id, query="", memory_type=None, content_type="markdown")
+    skill_results = storage.search_memories(session.id, query="", memory_type=None, content_type="skill")
     all_results = storage.search_memories(session.id, query="", memory_type=None)
 
     assert len(code_results) == 1
@@ -576,12 +528,8 @@ def test_search_memories_by_project_filters_by_content_type(tmp_path: Path) -> N
         ),
     )
 
-    code_results = storage.search_memories_by_project(
-        project.id, query="", memory_type=None, content_type="code"
-    )
-    markdown_results = storage.search_memories_by_project(
-        project.id, query="", memory_type=None, content_type="markdown"
-    )
+    code_results = storage.search_memories_by_project(project.id, query="", memory_type=None, content_type="code")
+    markdown_results = storage.search_memories_by_project(project.id, query="", memory_type=None, content_type="markdown")
 
     assert len(code_results) == 1
     assert code_results[0].content_type is ContentType.CODE
@@ -623,12 +571,8 @@ def test_storage_update_skill(tmp_path: Path) -> None:
     storage = DuckDBStorage(tmp_path / "memory.duckdb")
     from quackit.models import SkillUpdate
 
-    created = storage.save_skill(
-        SkillCreate(name="original", content="original content", tags=["a"])
-    )
-    updated = storage.update_skill(
-        created.skill_id, SkillUpdate(name="updated", content="new content", tags=["b"])
-    )
+    created = storage.save_skill(SkillCreate(name="original", content="original content", tags=["a"]))
+    updated = storage.update_skill(created.skill_id, SkillUpdate(name="updated", content="new content", tags=["b"]))
 
     assert updated.name == "updated"
     assert updated.content == "new content"
@@ -640,11 +584,7 @@ def test_storage_update_skill_partial(tmp_path: Path) -> None:
     storage = DuckDBStorage(tmp_path / "memory.duckdb")
     from quackit.models import SkillUpdate
 
-    created = storage.save_skill(
-        SkillCreate(
-            name="original", content="content", tags=["keep"], description="desc"
-        )
-    )
+    created = storage.save_skill(SkillCreate(name="original", content="content", tags=["keep"], description="desc"))
     updated = storage.update_skill(created.skill_id, SkillUpdate(name="new name"))
 
     assert updated.name == "new name"
@@ -671,10 +611,8 @@ def test_storage_delete_skill(tmp_path: Path) -> None:
 def test_storage_list_skills(tmp_path: Path) -> None:
     storage = DuckDBStorage(tmp_path / "memory.duckdb")
     s1 = storage.save_skill(SkillCreate(name="alpha", content="aaa", tags=["python"]))
-    s2 = storage.save_skill(SkillCreate(name="beta", content="bbb", tags=["go"]))
-    s3 = storage.save_skill(
-        SkillCreate(name="gamma", content="ccc", tags=["python", "cli"])
-    )
+    storage.save_skill(SkillCreate(name="beta", content="bbb", tags=["go"]))
+    storage.save_skill(SkillCreate(name="gamma", content="ccc", tags=["python", "cli"]))
 
     all_skills = storage.list_skills()
     assert len(all_skills) == 3

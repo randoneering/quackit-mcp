@@ -30,9 +30,7 @@ MAX_CONTENT_CHARS = 100_000
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, openWorldHint=False)
 WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False)
-DESTRUCTIVE = ToolAnnotations(
-    readOnlyHint=False, destructiveHint=True, openWorldHint=False
-)
+DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False)
 
 
 def _validate_offset(offset: int) -> int:
@@ -41,9 +39,7 @@ def _validate_offset(offset: int) -> int:
     return offset
 
 
-def _truncate_content(
-    data: dict[str, Any], *, offset: int, max_chars: int
-) -> dict[str, Any]:
+def _truncate_content(data: dict[str, Any], *, offset: int, max_chars: int) -> dict[str, Any]:
     _validate_offset(offset)
     validate_limit(max_chars, maximum=MAX_CONTENT_CHARS)
     content = data.get("content", "")
@@ -108,9 +104,7 @@ def build_server(
         """Create a new project to group sessions and memories."""
         log.debug("Tool call: create_project(name=%s)", name)
         validate_name(name)
-        return tool_context.service.create_project(
-            name=name, description=description
-        ).model_dump(mode="json")
+        return tool_context.service.create_project(name=name, description=description).model_dump(mode="json")
 
     @mcp.tool(annotations=DESTRUCTIVE)
     def consolidate_projects(source_ids: list[str], target_id: str) -> dict:
@@ -120,36 +114,26 @@ def build_server(
             source_ids,
             target_id,
         )
-        return tool_context.service.consolidate_projects(
-            source_ids=source_ids, target_id=target_id
-        ).model_dump(mode="json")
+        return tool_context.service.consolidate_projects(source_ids=source_ids, target_id=target_id).model_dump(mode="json")
 
     @mcp.tool(annotations=READ_ONLY)
     def list_projects(limit: int = DEFAULT_LIST_LIMIT) -> list[dict]:
         """List projects, bounded by limit."""
         log.debug("Tool call: list_projects(limit=%d)", limit)
         validate_limit(limit)
-        return [
-            item.model_dump(mode="json")
-            for item in tool_context.service.list_projects()[:limit]
-        ]
+        return [item.model_dump(mode="json") for item in tool_context.service.list_projects()[:limit]]
 
     @mcp.tool(annotations=WRITE)
     def start_session(project_id: str | None = None) -> dict:
         """Start a new memory session, optionally within a project."""
         log.debug("Tool call: start_session(project_id=%s)", project_id)
-        return tool_context.service.start_session(project_id=project_id).model_dump(
-            mode="json"
-        )
+        return tool_context.service.start_session(project_id=project_id).model_dump(mode="json")
 
     @mcp.tool(annotations=READ_ONLY)
     def list_recent_sessions(limit: int = 10) -> list[dict]:
         """List recent sessions, newest first."""
         log.debug("Tool call: list_recent_sessions(limit=%d)", limit)
-        return [
-            item.model_dump(mode="json")
-            for item in tool_context.service.list_recent_sessions(limit=limit)
-        ]
+        return [item.model_dump(mode="json") for item in tool_context.service.list_recent_sessions(limit=limit)]
 
     @mcp.tool(annotations=WRITE)
     def activate_session(session_id: str) -> dict:
@@ -182,9 +166,7 @@ def build_server(
         )
         validate_content(content)
         validated_tags = validate_tags(tags or [])
-        validated_content_type = (
-            None if content_type is None else ContentType(content_type)
-        )
+        validated_content_type = None if content_type is None else ContentType(content_type)
         return tool_context.service.save_memory(
             type=MemoryType(type),
             content=content,
@@ -265,9 +247,7 @@ def build_server(
         ]
 
     @mcp.tool(annotations=READ_ONLY)
-    def list_sessions_by_project(
-        project_id: str, limit: int = DEFAULT_LIST_LIMIT
-    ) -> list[dict]:
+    def list_sessions_by_project(project_id: str, limit: int = DEFAULT_LIST_LIMIT) -> list[dict]:
         """List sessions belonging to a project, newest first, bounded by limit."""
         log.debug(
             "Tool call: list_sessions_by_project(project_id=%s, limit=%d)",
@@ -275,12 +255,7 @@ def build_server(
             limit,
         )
         validate_limit(limit)
-        return [
-            item.model_dump(mode="json")
-            for item in tool_context.service.list_sessions_by_project(project_id)[
-                :limit
-            ]
-        ]
+        return [item.model_dump(mode="json") for item in tool_context.service.list_sessions_by_project(project_id)[:limit]]
 
     @mcp.tool(annotations=WRITE)
     def save_skill(
@@ -361,14 +336,9 @@ def build_server(
         limit: int = DEFAULT_LIST_LIMIT,
     ) -> list[dict]:
         """List skill summaries. Full content is omitted; call get_skill for paginated content."""
-        log.debug(
-            "Tool call: list_skills(query=%s, tag=%s, limit=%d)", query, tag, limit
-        )
+        log.debug("Tool call: list_skills(query=%s, tag=%s, limit=%d)", query, tag, limit)
         validate_limit(limit)
-        return [
-            _skill_summary(item)
-            for item in tool_context.service.list_skills(query=query, tag=tag)[:limit]
-        ]
+        return [_skill_summary(item) for item in tool_context.service.list_skills(query=query, tag=tag)[:limit]]
 
     return mcp
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from quackit._validation import (
     DEFAULT_LIMIT,
@@ -54,9 +54,7 @@ class MemoryService:
         self._heartbeat_interval = heartbeat_interval
         self._heartbeat_manager: HeartbeatManager | None = None
 
-    def create_project(
-        self, name: str, description: str | None = None
-    ) -> ProjectRecord:
+    def create_project(self, name: str, description: str | None = None) -> ProjectRecord:
         return self._storage.create_project(name=name, description=description)
 
     def get_project(self, project_id: str) -> ProjectRecord:
@@ -65,9 +63,7 @@ class MemoryService:
             raise ProjectNotFoundError(f"Project not found: {project_id}")
         return project
 
-    def consolidate_projects(
-        self, source_ids: list[str], target_id: str
-    ) -> ProjectRecord:
+    def consolidate_projects(self, source_ids: list[str], target_id: str) -> ProjectRecord:
         if not source_ids:
             raise RuntimeError("source_ids must not be empty")
         if target_id in source_ids:

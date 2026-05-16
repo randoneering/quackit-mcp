@@ -3,8 +3,7 @@ from pathlib import Path
 import pytest
 
 from quackit.models import ContentType, MemoryType, SessionStatus
-from quackit.service import MemoryNotFoundError
-from quackit.service import MemoryService
+from quackit.service import MemoryNotFoundError, MemoryService
 from quackit.storage.duckdb import DuckDBStorage
 
 
@@ -38,13 +37,9 @@ def test_save_memory_requires_active_session(tmp_path: Path) -> None:
 def test_activate_save_search_and_end_session(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     first = service.start_session()
-    service.save_memory(
-        type=MemoryType.NOTE, content="first session note", tags=["one"]
-    )
-    second = service.start_session()
-    service.save_memory(
-        type=MemoryType.ERROR_FIX, content="second session fix", tags=["two"]
-    )
+    service.save_memory(type=MemoryType.NOTE, content="first session note", tags=["one"])
+    service.start_session()
+    service.save_memory(type=MemoryType.ERROR_FIX, content="second session fix", tags=["two"])
 
     service.activate_session(first.id)
     results = service.search_memory(query="session")
@@ -102,9 +97,7 @@ def test_update_memory_with_metadata(tmp_path: Path) -> None:
     service.start_session()
     created = service.save_memory(type=MemoryType.NOTE, content="original", tags=[])
 
-    updated = service.update_memory(
-        mem_id=created.mem_id, metadata={"language": "rust"}
-    )
+    updated = service.update_memory(mem_id=created.mem_id, metadata={"language": "rust"})
 
     assert updated.metadata == {"language": "rust"}
 
@@ -112,9 +105,7 @@ def test_update_memory_with_metadata(tmp_path: Path) -> None:
 def test_update_memory_updates_content(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     service.start_session()
-    created = service.save_memory(
-        type=MemoryType.NOTE, content="original", tags=["a"], title="orig"
-    )
+    created = service.save_memory(type=MemoryType.NOTE, content="original", tags=["a"], title="orig")
 
     updated = service.update_memory(
         mem_id=created.mem_id,
@@ -151,9 +142,7 @@ def test_update_memory_validates_tags(tmp_path: Path) -> None:
 def test_update_memory_partial(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     service.start_session()
-    created = service.save_memory(
-        type=MemoryType.NOTE, content="original", tags=["a"], title="orig"
-    )
+    created = service.save_memory(type=MemoryType.NOTE, content="original", tags=["a"], title="orig")
 
     updated = service.update_memory(mem_id=created.mem_id, content="only content")
 
@@ -213,9 +202,7 @@ def test_search_memory_applies_default_limit(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     service.start_session()
     for i in range(105):
-        service.save_memory(
-            type=MemoryType.NOTE, content=f"limited memory {i}", tags=[]
-        )
+        service.save_memory(type=MemoryType.NOTE, content=f"limited memory {i}", tags=[])
 
     results = service.search_memory(query="limited")
 
@@ -225,7 +212,7 @@ def test_search_memory_applies_default_limit(tmp_path: Path) -> None:
 def test_search_memory_with_project_scope(tmp_path: Path) -> None:
     service = MemoryService(storage=DuckDBStorage(tmp_path / "memory.duckdb"))
     project = service.create_project(name="proj")
-    session = service.start_session(project_id=project.id)
+    service.start_session(project_id=project.id)
     service.save_memory(type=MemoryType.NOTE, content="project memory", tags=["proj"])
 
     results = service.search_memory(query="project", project_scope=True)
@@ -258,9 +245,7 @@ def test_close_stops_heartbeat(tmp_path: Path) -> None:
     assert service._heartbeat_manager is None
 
 
-def test_orphan_detection_uses_count_query(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_orphan_detection_uses_count_query(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     storage = DuckDBStorage(tmp_path / "memory.duckdb")
     service = MemoryService(storage=storage)
     session = storage.create_session()

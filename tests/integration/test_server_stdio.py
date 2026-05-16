@@ -15,9 +15,7 @@ def _tool_functions(server) -> dict[str, object]:
 
 def _tool_components(server) -> dict[str, object]:
     return {
-        key.removeprefix("tool:").rstrip("@"): component
-        for key, component in server._local_provider._components.items()
-        if key.startswith("tool:")
+        key.removeprefix("tool:").rstrip("@"): component for key, component in server._local_provider._components.items() if key.startswith("tool:")
     }
 
 
@@ -30,11 +28,7 @@ def test_create_tool_context_uses_explicit_database_path(tmp_path: Path) -> None
 
 def test_build_server_registers_expected_tools(tmp_path: Path) -> None:
     server = build_server(database_path=tmp_path / "mcp.duckdb")
-    tool_names = sorted(
-        key.removeprefix("tool:").rstrip("@")
-        for key in server._local_provider._components
-        if key.startswith("tool:")
-    )
+    tool_names = sorted(key.removeprefix("tool:").rstrip("@") for key in server._local_provider._components if key.startswith("tool:"))
 
     assert tool_names == [
         "activate_session",
@@ -156,9 +150,7 @@ def test_get_skill_paginates_large_content(tmp_path: Path) -> None:
     skill = tools["save_skill"]("large", "abcdef", description="large")
 
     first_page = tools["get_skill"](skill["skill_id"], max_chars=3)
-    second_page = tools["get_skill"](
-        skill["skill_id"], max_chars=3, offset=first_page["next_offset"]
-    )
+    second_page = tools["get_skill"](skill["skill_id"], max_chars=3, offset=first_page["next_offset"])
 
     assert first_page["content"] == "abc"
     assert first_page["content_length"] == 6

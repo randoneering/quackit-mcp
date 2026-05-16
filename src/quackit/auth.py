@@ -20,32 +20,19 @@ class OAuthConfig(BaseModel):
     introspection_url: AnyHttpUrl | None = None
     introspection_client_id: str | None = None
     introspection_client_secret: SecretStr | None = None
-    introspection_client_auth_method: Literal[
-        "client_secret_basic", "client_secret_post"
-    ] = "client_secret_basic"
+    introspection_client_auth_method: Literal["client_secret_basic", "client_secret_post"] = "client_secret_basic"
 
     @model_validator(mode="after")
     def validate_token_verifier(self) -> "OAuthConfig":
         resource_path = urlparse(str(self.resource_url)).path.rstrip("/")
         if resource_path != "/mcp":
-            raise ValueError(
-                "QUACKIT_OAUTH_RESOURCE_URL must be the exact MCP endpoint URL "
-                "ending in /mcp"
-            )
+            raise ValueError("QUACKIT_OAUTH_RESOURCE_URL must be the exact MCP endpoint URL ending in /mcp")
         has_jwks = self.jwks_uri is not None
         has_introspection = self.introspection_url is not None
         if has_jwks == has_introspection:
-            raise ValueError(
-                "Configure exactly one OAuth token verifier: "
-                "QUACKIT_OAUTH_JWKS_URI or QUACKIT_OAUTH_INTROSPECTION_URL"
-            )
-        if has_introspection and (
-            not self.introspection_client_id or self.introspection_client_secret is None
-        ):
-            raise ValueError(
-                "OAuth introspection requires QUACKIT_OAUTH_INTROSPECTION_CLIENT_ID "
-                "and QUACKIT_OAUTH_INTROSPECTION_CLIENT_SECRET"
-            )
+            raise ValueError("Configure exactly one OAuth token verifier: QUACKIT_OAUTH_JWKS_URI or QUACKIT_OAUTH_INTROSPECTION_URL")
+        if has_introspection and (not self.introspection_client_id or self.introspection_client_secret is None):
+            raise ValueError("OAuth introspection requires QUACKIT_OAUTH_INTROSPECTION_CLIENT_ID and QUACKIT_OAUTH_INTROSPECTION_CLIENT_SECRET")
         return self
 
 
@@ -61,10 +48,7 @@ def load_oauth_config_from_env() -> OAuthConfig | None:
     if not issuer_url and not resource_url:
         return None
     if not issuer_url or not resource_url:
-        raise ValueError(
-            "OAuth requires both QUACKIT_OAUTH_ISSUER_URL and "
-            "QUACKIT_OAUTH_RESOURCE_URL"
-        )
+        raise ValueError("OAuth requires both QUACKIT_OAUTH_ISSUER_URL and QUACKIT_OAUTH_RESOURCE_URL")
     return OAuthConfig(
         issuer_url=issuer_url,
         resource_url=resource_url,
@@ -74,9 +58,7 @@ def load_oauth_config_from_env() -> OAuthConfig | None:
         jwt_algorithm=os.environ.get("QUACKIT_OAUTH_JWT_ALGORITHM", "RS256"),
         introspection_url=os.environ.get("QUACKIT_OAUTH_INTROSPECTION_URL"),
         introspection_client_id=os.environ.get("QUACKIT_OAUTH_INTROSPECTION_CLIENT_ID"),
-        introspection_client_secret=os.environ.get(
-            "QUACKIT_OAUTH_INTROSPECTION_CLIENT_SECRET"
-        ),
+        introspection_client_secret=os.environ.get("QUACKIT_OAUTH_INTROSPECTION_CLIENT_SECRET"),
         introspection_client_auth_method=os.environ.get(
             "QUACKIT_OAUTH_INTROSPECTION_CLIENT_AUTH_METHOD",
             "client_secret_basic",

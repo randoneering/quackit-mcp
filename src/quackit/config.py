@@ -22,9 +22,7 @@ _VALID_SCHEMES = frozenset({"postgresql", "postgres"})
 
 def load_settings() -> Settings:
     load_dotenv()
-    database_url = os.environ.get("QUACKIT_DATABASE_URL") or os.environ.get(
-        "AGENT_MEMORY_DATABASE_URL"
-    )
+    database_url = os.environ.get("QUACKIT_DATABASE_URL") or os.environ.get("AGENT_MEMORY_DATABASE_URL")
     if database_url:
         scheme = database_url.split("://", 1)[0]
         if scheme not in _VALID_SCHEMES:
@@ -34,9 +32,7 @@ def load_settings() -> Settings:
             )
         log.info("Using Postgres backend via QUACKIT_DATABASE_URL")
         return Settings(database_url=database_url)
-    configured_path = os.environ.get("QUACKIT_DUCKDB_PATH") or os.environ.get(
-        "AGENT_MEMORY_DUCKDB_PATH"
-    )
+    configured_path = os.environ.get("QUACKIT_DUCKDB_PATH") or os.environ.get("AGENT_MEMORY_DUCKDB_PATH")
     if configured_path:
         log.info("Using DuckDB backend at %s", configured_path)
         return Settings(duckdb_path=Path(configured_path))
