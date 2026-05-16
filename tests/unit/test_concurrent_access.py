@@ -102,7 +102,6 @@ def test_active_session_state_concurrent_clear_causes_no_error() -> None:
 
 def test_heartbeat_concurrent_start_stop() -> None:
     calls: list[str] = []
-    threading.Lock()
     manager = HeartbeatManager(heartbeat_fn=lambda: calls.append("beat"), interval=0.005)
 
     def hammer() -> None:
