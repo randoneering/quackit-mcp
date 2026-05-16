@@ -42,6 +42,19 @@ jobs:
       - name: Run integration tests (DuckDB only)
         run: uv run pytest tests/integration -v -k "not postgres"
 
+      - name: Generate coverage report
+        if: matrix.python-version == '3.12'
+        run: uv run pytest --cov=src --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12' && vars.CODECOV_UPLOAD_ENABLED == 'true'
+        uses: codecov/codecov-action@v5 # v5.4.3
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   lint:
     runs-on: ubuntu-latest
     steps:
