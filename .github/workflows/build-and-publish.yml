@@ -14,6 +14,7 @@ permissions:
   contents: read
   packages: write
   security-events: write
+  id-token: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -131,3 +132,27 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: true
           sbom: true
+
+  # --- Publish to PyPI (tags only, gated by security-and-tests) ---
+  publish-pypi:
+    needs: security-and-tests
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/quackit
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4 # v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3 # v3.2.4
+
+      - name: Build
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
