@@ -1,4 +1,13 @@
-CVE-2023-45853  # zlib: will_not_fix in Debian 12 bookworm — integer overflow in zipOpenNewFileInZip4_6
-CVE-2025-7458   # libsqlite3-0: SQLite integer overflow — no fix available for Debian 12
-CVE-2025-69720  # ncurses: buffer overflow — no fix available for Debian 12
-CVE-2026-29111  # systemd: arbitrary code execution via spurious IPC — no fix available for Debian 12
+# Debian 12 (bookworm) base image CVEs — all unfixed as of 2026-05-15
+CVE-2023-45853
+CVE-2025-69720
+CVE-2025-7458
+CVE-2026-0861
+CVE-2026-29111
+CVE-2026-33845
+CVE-2026-33846
+CVE-2026-3833
+CVE-2026-41989
+CVE-2026-42010
+CVE-2026-42011
+CVE-2026-4878
