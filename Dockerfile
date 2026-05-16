@@ -6,7 +6,7 @@ COPY src ./src
 RUN uv sync --no-dev --frozen
 
 # Use slim Python without uv — the venv is self-contained at runtime
-FROM python:3.12-slim-bookworm
+FROM python:3.14.5-slim-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/randoneering/quackit-mcp"
 LABEL org.opencontainers.image.description="Local-first session memory for coding agents, backed by DuckDB or Postgres"
