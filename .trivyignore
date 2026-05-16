@@ -1,13 +1,4 @@
-# .trivyignore
-#
-# Trivy vulnerability scanner ignore file.
-# Format: One CVE ID per line. Lines starting with # are comments.
-#
-# Use this file to suppress known false positives or CVEs that are not
-# exploitable in the context of this application.
-#
-# Example:
-#   CVE-2023-1234  # Not exploitable — requires local access only
-#
-# Review and update this file after each Trivy scan run.
-# See: https://aquasecurity.github.io/trivy/latest/docs/guide/ignore/vulnerability/
+CVE-2023-45853  # zlib: will_not_fix in Debian 12 bookworm — integer overflow in zipOpenNewFileInZip4_6
+CVE-2025-7458   # libsqlite3-0: SQLite integer overflow — no fix available for Debian 12
+CVE-2025-69720  # ncurses: buffer overflow — no fix available for Debian 12
+CVE-2026-29111  # systemd: arbitrary code execution via spurious IPC — no fix available for Debian 12
