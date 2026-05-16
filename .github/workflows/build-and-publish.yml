@@ -12,9 +12,7 @@ on:
 
 permissions:
   contents: read
-  packages: write
   security-events: write
-  id-token: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -65,6 +63,10 @@ jobs:
     needs: security-and-tests
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4 # v4.2.2
