@@ -205,14 +205,85 @@ Typical MCP flow:
 3. Call `search_memory` with a query.
 4. Call `end_session` with a summary.
 
-Example stdio client configuration:
+## Configure Popular Coding Agents
+
+For local agent use, run quackit over `stdio`.
+
+### Standard `.mcp.json`
+
+If your agent supports the shared MCP project format, add this file at the project root:
 
 ```json
 {
-  "command": "uv",
-  "args": ["run", "quackit", "serve", "--transport", "stdio"]
+  "mcpServers": {
+    "quackit": {
+      "command": "uv",
+      "args": ["run", "quackit", "serve", "--transport", "stdio"]
+    }
+  }
 }
 ```
+
+### OpenCode
+
+Add quackit to your OpenCode config under `mcp`:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "quackit": {
+      "type": "local",
+      "command": ["uv", "run", "quackit", "serve", "--transport", "stdio"],
+      "enabled": true
+    }
+  }
+}
+```
+
+### Claude Code
+
+Add quackit to the current project with the CLI:
+
+```bash
+claude mcp add --transport stdio quackit -- uv run quackit serve --transport stdio
+```
+
+Or check in a project-level `.mcp.json` file:
+
+```json
+{
+  "mcpServers": {
+    "quackit": {
+      "command": "uv",
+      "args": ["run", "quackit", "serve", "--transport", "stdio"]
+    }
+  }
+}
+```
+
+### Pi Coding Agent
+
+Pi uses the `pi-mcp-adapter` extension for MCP support:
+
+```bash
+pi install npm:pi-mcp-adapter
+```
+
+Then add a project-level `.mcp.json` file:
+
+```json
+{
+  "mcpServers": {
+    "quackit": {
+      "command": "uv",
+      "args": ["run", "quackit", "serve", "--transport", "stdio"]
+    }
+  }
+}
+```
+
+Pi also supports user-global shared MCP config in `~/.config/mcp/mcp.json`.
 
 ## Docker
 
@@ -272,4 +343,3 @@ docker run --rm \
   ghcr.io/randoneering/quackit-mcp:latest \
   serve --transport streamable-http --host 0.0.0.0 --port 8000 --allow-network
 ```
-
