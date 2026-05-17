@@ -127,6 +127,7 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results.sarif
+          category: trivy-linux-amd64
 
       # Build arm64, load locally for Trivy scan
       - name: Build image (arm64, local load)
@@ -160,6 +161,7 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-results-arm64.sarif
+          category: trivy-linux-arm64
 
       # Only push multi-arch image after both scans pass
       - name: Build and push (multi-arch)
